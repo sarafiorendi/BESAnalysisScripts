@@ -17,20 +17,39 @@ region_label_dict = {
  9 :"J",
 }
 
+# input_file = 'testSeeds_50ev.root'
+# out_tag = '_50ev'
+# input_file = 'testSeeds_cutOnInner_50ev.root'
+# out_tag = '_cutOnInner_50ev'
+
+# input_file = 'testSeeds_20DisplSUSY.root'
+# out_tag = '_displSUSY_20ev'
+# input_file = 'testSeeds_cutOnInner_20DisplSUSY.root'
+# out_tag = '_displSUSY_cutOnInner_20ev'
+
+# input_file = 'testSeeds_20DisplSUSY_no_cut_mirror_updateVMRouter_v5_deltaRhalfOK.root' ## new original
+# out_tag = '_displSUSY_newOriginal_20ev'
+
+input_file = 'testSeeds_20DisplSUSY_inner_cut_mirror_updateVMRouter_v5_deltaRhalfOK_myLUTonPS.root' ## new with cuts
+out_tag = '_displSUSY_deltaRhalfOK_myLUTonPS_20ev_seed10'
+
 ## load input file and create pandas df
 all_seeds_input = [
-          'testSeeds.root:L1SeedsNtuple/tripletsTree',  
+          input_file + ':L1SeedsNtuple/tripletsTree',  
 ]
 input_uproot = uproot.concatenate(all_seeds_input, library="np")
 dataframe = pandas.DataFrame(input_uproot)
 
 
 acc_seeds_input = [
-          'testSeeds.root:L1AcceptedSeedsNtuple/tripletsTree',  
+          input_file + ':L1AcceptedSeedsNtuple/tripletsTree',  
 ]
 acc_input_uproot = uproot.concatenate(acc_seeds_input, library="np")
 dataframe_acc = pandas.DataFrame(acc_input_uproot)
 
+## only seed 10
+# dataframe_acc = dataframe_acc[dataframe_acc.middle_layerdisk == 1 &&  dataframe_acc.inner_layerdisk == 6]
+# dataframe = dataframe[(dataframe.middle_layerdisk == 1) & (dataframe.inner_layerdisk == 6)]
 
 ## group per event and region, and count entries (# triplets) per region
 grouped = dataframe.groupby(["eventNumber", "region"]).size().reset_index(name="count")
@@ -41,11 +60,11 @@ plt.figure(figsize=(10, 6))
 for region, counts in region_counts.items():
     plt.hist(counts, bins=20, alpha=0.9, label=f"Region {region}", histtype='step')
 
-plt.xlabel("Number of accepted triplets (second block)")
+plt.xlabel("Number of tested triplets (second block)")
 plt.ylabel("Events")
 plt.legend()
 plt.grid(True)
-plt.savefig('ntriplets_vs_region.pdf')
+plt.savefig('plots/ntriplets_vs_region{}.pdf'.format(out_tag))
 
 
 
@@ -63,15 +82,19 @@ for region, counts in region_combined_counts.items():
     reg_label = region_label_dict[region]
     plt.hist(counts, bins=20, alpha=0.9, label=f"region {reg_label} (avg {ave:.2f})", histtype='step')
 
-plt.xlabel("Number of accepted triplets (second block)")
+plt.xlabel("Number of tested triplets (second block)")
 plt.ylabel("TPD instances")
 plt.legend()
 plt.yscale('log')
+plt.xlim(-40,2000)
 
-plt.text(0.95, 1.04, "50 ev, TTBar 200PU D98", fontsize=12, horizontalalignment='right', verticalalignment='top',transform=plt.gca().transAxes )
+plt.text(0.95, 1.04, "20 ev, DisplSUSY 200PU D98", fontsize=12, horizontalalignment='right', verticalalignment='top',transform=plt.gca().transAxes )
+# plt.text(0.95, 1.04, "20 ev, DisplSUSY 200PU D98, seed 10", fontsize=12, horizontalalignment='right', verticalalignment='top',transform=plt.gca().transAxes )
 plt.grid(True)
-plt.savefig('ntriplets_vs_region_v2.pdf')
+plt.savefig('plots/ntriplets_vs_region_v2{}.pdf'.format(out_tag))
 
+
+exit(0)
 
 
 ## now compare all seeds to selected ones
@@ -115,6 +138,9 @@ pair_list = [
   ['inner_layerdisk', 'middle_layerdisk'],
   ['outer_layerdisk', 'middle_layerdisk'],
   ['inner_layerdisk', 'outer_layerdisk'],
+  ['inner_rzbin', 'middle_rzbin'],
+  ['outer_rzbin', 'middle_rzbin'],
+  ['inner_rzbin', 'outer_rzbin'],
 ]
 
 for pair in pair_list:
@@ -133,12 +159,13 @@ for pair in pair_list:
   plt.text(0.5, 1.05, "failing seeds", fontsize=12, horizontalalignment='center', verticalalignment='top',transform=plt.gca().transAxes )
   plt.xlabel(x.replace('_', ' '))
   plt.ylabel(y.replace('_', ' '))
-  if '_r' in x:
+  if '_r' in x[-2:]:
     plt.xlim(20,120)
     plt.ylim(20,120)
-  plt.savefig('{}_vs_{}_fail.pdf'.format(y,x))
+  plt.savefig('plots/{}_vs_{}_fail{}.pdf'.format(y,x,out_tag))
 
   plt.clf()
+  if 'rzbin' in x:  continue
   counts_pass = dataframe_acc.groupby([x, y]).size().reset_index(name='counts')
   plt.scatter(counts_pass[x], counts_pass[y], c=counts_pass['counts'], cmap='viridis', s=20, label='passing', alpha=0.5, edgecolors='none')
   plt.colorbar(label='Counts')  # Add color bar for reference
@@ -146,8 +173,8 @@ for pair in pair_list:
   plt.text(0.5, 1.05, "passing seeds", fontsize=12, horizontalalignment='center', verticalalignment='top',transform=plt.gca().transAxes )
   plt.xlabel(x.replace('_', ' '))
   plt.ylabel(y.replace('_', ' '))
-  if '_r' in x:
+  if '_r' in x[-2:]:
     plt.xlim(20,120)
     plt.ylim(20,120)
-  plt.savefig('{}_vs_{}_pass.pdf'.format(y,x))
+  plt.savefig('plots/{}_vs_{}_pass{}.pdf'.format(y,x,out_tag))
 
