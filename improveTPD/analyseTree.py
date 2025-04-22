@@ -17,6 +17,11 @@ region_label_dict = {
  9 :"J",
 }
 
+iseed = 10
+
+str_seed = str(iseed)
+if iseed == -1:
+  str_seed = 'All'
 # input_file = 'testSeeds_50ev.root'
 # out_tag = '_50ev'
 # input_file = 'testSeeds_cutOnInner_50ev.root'
@@ -28,10 +33,16 @@ region_label_dict = {
 # out_tag = '_displSUSY_cutOnInner_20ev'
 
 # input_file = 'testSeeds_20DisplSUSY_no_cut_mirror_updateVMRouter_v5_deltaRhalfOK.root' ## new original
-# out_tag = '_displSUSY_newOriginal_20ev'
+# out_tag = '_displSUSY_newOriginal_20ev_noTPDgrouping_seed{}'.format(str_seed)
 
-input_file = 'testSeeds_20DisplSUSY_inner_cut_mirror_updateVMRouter_v5_deltaRhalfOK_myLUTonPS.root' ## new with cuts
-out_tag = '_displSUSY_deltaRhalfOK_myLUTonPS_20ev_seed10'
+input_file = 'testSeeds_50DisplSUSY_no_cut_mirror_updateVMRouter_v5_deltaRhalfOK.root' ## new original
+out_tag = '_displSUSY_newOriginal_50ev_noTPDgrouping_seed{}'.format(str_seed)
+
+# input_file = 'testSeeds_20DisplSUSY_inner_cut_mirror_updateVMRouter_v5_deltaRhalfOK_myLUTonPS.root' ## new with cuts
+# out_tag = '_displSUSY_deltaRhalfOK_myLUTonPS_20ev_seed10'
+
+# input_file = 'testSeeds_20DisplSUSY_inner_cut_mirror_updateVMRouter_v5_fullDeltaR_myLUTonPS_l2diskvm.root' ## new with cuts
+# out_tag = '_displSUSY_fulldeltaR_myLUTonPS_20ev_seed{}'.format(str_seed)
 
 ## load input file and create pandas df
 all_seeds_input = [
@@ -40,37 +51,23 @@ all_seeds_input = [
 input_uproot = uproot.concatenate(all_seeds_input, library="np")
 dataframe = pandas.DataFrame(input_uproot)
 
-
-acc_seeds_input = [
-          input_file + ':L1AcceptedSeedsNtuple/tripletsTree',  
-]
-acc_input_uproot = uproot.concatenate(acc_seeds_input, library="np")
-dataframe_acc = pandas.DataFrame(acc_input_uproot)
-
-## only seed 10
-# dataframe_acc = dataframe_acc[dataframe_acc.middle_layerdisk == 1 &&  dataframe_acc.inner_layerdisk == 6]
-# dataframe = dataframe[(dataframe.middle_layerdisk == 1) & (dataframe.inner_layerdisk == 6)]
-
-## group per event and region, and count entries (# triplets) per region
-grouped = dataframe.groupby(["eventNumber", "region"]).size().reset_index(name="count")
-region_counts = grouped.groupby(["region"])["count"].apply(list)
-
-# plot the distribution of counts for each region
-plt.figure(figsize=(10, 6))
-for region, counts in region_counts.items():
-    plt.hist(counts, bins=20, alpha=0.9, label=f"Region {region}", histtype='step')
-
-plt.xlabel("Number of tested triplets (second block)")
-plt.ylabel("Events")
-plt.legend()
-plt.grid(True)
-plt.savefig('plots/ntriplets_vs_region{}.pdf'.format(out_tag))
+if iseed == 10:
+  ## only seed 10
+  dataframe = dataframe[(dataframe.middle_layerdisk == 1) & (dataframe.inner_layerdisk == 6)]
+elif iseed == 11:
+  ## only seed 11
+  dataframe = dataframe[(dataframe.middle_layerdisk == 6) & (dataframe.inner_layerdisk == 1)]
+elif iseed == 9:
+  dataframe = dataframe[(dataframe.middle_layerdisk == 4) & (dataframe.inner_layerdisk == 3)]
+elif iseed == 8:
+  dataframe = dataframe[(dataframe.middle_layerdisk == 2) & (dataframe.inner_layerdisk == 1)]
 
 
 
 plt.clf()
 ## group per event and region/sector/tpdunit, and count entries (# triplets) per sub-region
-grouped = dataframe.groupby(["eventNumber", "region", "sector", "tpdunit"]).size().reset_index(name="count")
+# grouped = dataframe.groupby(["eventNumber", "region", "sector", "tpdunit"]).size().reset_index(name="count")
+grouped = dataframe.groupby(["eventNumber", "region", "sector"]).size().reset_index(name="count")
 region_combined_counts = grouped.groupby("region")["count"].apply(list)
 
 plt.figure(figsize=(8, 6))
@@ -86,15 +83,35 @@ plt.xlabel("Number of tested triplets (second block)")
 plt.ylabel("TPD instances")
 plt.legend()
 plt.yscale('log')
-plt.xlim(-40,2000)
+# plt.xlim(-40,2000)
+plt.xlim(-40,10000)
 
-plt.text(0.95, 1.04, "20 ev, DisplSUSY 200PU D98", fontsize=12, horizontalalignment='right', verticalalignment='top',transform=plt.gca().transAxes )
-# plt.text(0.95, 1.04, "20 ev, DisplSUSY 200PU D98, seed 10", fontsize=12, horizontalalignment='right', verticalalignment='top',transform=plt.gca().transAxes )
+if iseed > 0:
+  plt.text(0.95, 1.04, "50 ev, DisplSUSY 200PU D98, seed {}".format(str_seed), fontsize=12, horizontalalignment='right', verticalalignment='top',transform=plt.gca().transAxes )
+else:
+  plt.text(0.95, 1.04, "50 ev, DisplSUSY 200PU D98", fontsize=12, horizontalalignment='right', verticalalignment='top',transform=plt.gca().transAxes )
 plt.grid(True)
 plt.savefig('plots/ntriplets_vs_region_v2{}.pdf'.format(out_tag))
 
 
 exit(0)
+
+
+## group per event and region, and count entries (# triplets) per region
+# grouped = dataframe.groupby(["eventNumber", "region"]).size().reset_index(name="count")
+# region_counts = grouped.groupby(["region"])["count"].apply(list)
+# 
+# # plot the distribution of counts for each region
+# plt.figure(figsize=(10, 6))
+# for region, counts in region_counts.items():
+#     plt.hist(counts, bins=20, alpha=0.9, label=f"Region {region}", histtype='step')
+# 
+# plt.xlabel("Number of tested triplets (second block)")
+# plt.ylabel("Events")
+# plt.legend()
+# plt.grid(True)
+# plt.savefig('plots/ntriplets_vs_region{}.pdf'.format(out_tag))
+# 
 
 
 ## now compare all seeds to selected ones
